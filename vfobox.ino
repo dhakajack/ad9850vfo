@@ -50,7 +50,7 @@ const double bandStart = 100000;  // start of Gnerator at 100 KHZ
 const double bandEnd = 40000000; // End of Generator at 40 MHz --signal will be a bit flaky!
 const double bandInit = 7150000; // where to initially set the frequency for tetsting Part II
 
-double freq = bandInit ;  // this is a variable (changes) - set it to the beginning of the band
+double freq = 0 ;  // this is a variable (changes) - set it to the beginning of the band
 double freqDelta = 10000; // how much to change the frequency by, clicking the rotary encoder will change this.
 
 byte counter = 0;
@@ -72,9 +72,6 @@ void setup() {
   lcd.begin(16,2);
   lcd.setCursor(0,1); // This places a display on the LCD at turn on at the 2nd line
   lcd.print(" 5R8SV Sig Gen");
-  delay(250);
-  lcd.setCursor(0,1);
-  lcd.print("              ");
   
   // Set up DDS
   pinMode(FQ_UD, OUTPUT);
@@ -93,6 +90,14 @@ void setup() {
   pinMode(M1Sw, INPUT_PULLUP);
   pinMode(M2Sw, INPUT_PULLUP);
   
+  
+ // start on M1 freq
+  EEPROM.get(eeAddressStart,freq);
+  if(freq < bandStart || freq > bandEnd) {
+    freq = bandInit;
+    EEPROM.put(eeAddressStart,freq);
+  }
+  
  // start up the DDS... 
   pulseHigh(RESET);
   pulseHigh(W_CLK);
@@ -100,6 +105,10 @@ void setup() {
   // start the oscillator...
   send_frequency(freq);     
   display_frequency(freq);
+  
+  delay(500);
+  lcd.setCursor(0,1);
+  lcd.print("              ");
 }
 
 void loop() {
