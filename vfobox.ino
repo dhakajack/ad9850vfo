@@ -169,13 +169,13 @@ void loop() {
       // long push = commit to memory
       EEPROM.put(eeAddressStart+buttons*sizeof(double),freq);
       lcd.print("m");
-      lcd.print(buttons);
+      lcd.print(buttons+1); // first button is referred to as "m1"
       lcd.print(" stored");
       } else {
       // short push = qsy to memory frequency
       EEPROM.get(eeAddressStart+buttons*sizeof(double),freq);
       lcd.print("recall m");
-      lcd.print(buttons);
+      lcd.print(buttons+1);
       send_frequency(freq);     
       display_frequency(freq);
       }
