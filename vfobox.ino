@@ -41,6 +41,10 @@ https://www.circuitsathome.com/mcu/rotary-encoder-interrupt-service-routine-for-
 #define DATAPIN 6
 #define RESET 7
 
+// set up memory push buttons
+#define M1Sw 8
+#define M2Sw 9
+
 const double bandStart = 100000;  // start of Gnerator at 100 KHZ
 const double bandEnd = 40000000; // End of Generator at 40 MHz --signal will be a bit flaky!
 const double bandInit = 7150000; // where to initially set the frequency for tetsting Part II
@@ -53,13 +57,21 @@ long lastClick = 0;
 long lastBlink = 0;
 boolean blinkState = false;
 
+boolean m1armed = false;
+boolean m2armed = false;
+long lastM1 = 0;
+long lastM2 = 0;
+
 // Connect via i2c, default address #1 (nothing jumpered)
 Adafruit_LiquidCrystal lcd(0);
 
 void setup() {
   lcd.begin(16,2);
   lcd.setCursor(0,1); // This places a display on the LCD at turn on at the 2nd line
-  lcd.print(" 5R8SV Sig Gen "); //Any LCD message can be place here. Just make sure there are 16 spaces between the "" marks
+  lcd.print(" 5R8SV Sig Gen");
+  delay(250);
+  lcd.setCursor(0,1);
+  lcd.print("              ");
   
   // Set up DDS
   pinMode(FQ_UD, OUTPUT);
@@ -73,6 +85,10 @@ void setup() {
   attachInterrupt(0, evaluateRotary, CHANGE);
   attachInterrupt(1, evaluateRotary, CHANGE);
   pinMode(RotEncSwPin, INPUT_PULLUP);
+  
+  // Set up memory buttons
+  pinMode(M1Sw, INPUT_PULLUP);
+  pinMode(M2Sw, INPUT_PULLUP);
   
  // start up the DDS... 
   pulseHigh(RESET);
@@ -128,6 +144,45 @@ void loop() {
     lastBlink = millis();
   }
   
+  // handle memory buttons
+  if(!m1armed && !digitalRead(M1Sw) && millis() - lastM1 > 50) {
+    lastM1 = millis();
+    m1armed = true;
+  }
+  if(m1armed && digitalRead(M1Sw) && millis() - lastM1 > 50) {  
+    //pushed, but for how long?
+    lcd.setCursor(0,1);
+    if(millis() - lastM1 > 500) {
+    // long push = commit to memory
+    lcd.print("m1 stored");
+    } else {
+    // short push = qsy to memory frequency
+    lcd.print("recall m1");
+    }
+    m1armed = false;
+    lastM1 = millis();
+  }
+
+//yes, duplicative code, could make an array of it...
+//maybe optimize later
+
+  if(!m2armed && !digitalRead(M2Sw) && millis() - lastM2 > 50) {
+    lastM2 = millis();
+    m2armed = true;
+  }
+  if(m2armed && digitalRead(M2Sw) && millis() - lastM2 > 50) {
+    //pushed, but for how long?
+    lcd.setCursor(0,1); 
+    if(millis() - lastM2 > 500) {
+    // long push = commit to memory
+    lcd.print("m2 stored"); 
+    } else {
+    // short push = qsy to memory frequency
+    lcd.print("recall m2"); 
+    }
+    m2armed = false;
+    lastM2 = millis();
+  }
 }
 
 // subroutine to display the frequency...
