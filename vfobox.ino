@@ -43,8 +43,8 @@ https://www.circuitsathome.com/mcu/rotary-encoder-interrupt-service-routine-for-
 #define RESET 7
 
 // set up memory push buttons
-#define M1Sw 8
-#define M2Sw 9
+#define MEM_BUTTON_START_PIN  8  // digital pin where mem buttons start
+#define NUMBER_MEM_BUTTONS    2  // how many mem buttons
 
 const double bandStart = 100000;  // start of Gnerator at 100 KHZ
 const double bandEnd = 40000000; // End of Generator at 40 MHz --signal will be a bit flaky!
@@ -58,10 +58,8 @@ long lastClick = 0;
 long lastBlink = 0;
 boolean blinkState = false;
 
-boolean m1armed = false;
-boolean m2armed = false;
-long lastM1 = 0;
-long lastM2 = 0;
+boolean mem_armed[NUMBER_MEM_BUTTONS];
+long last_mem[NUMBER_MEM_BUTTONS];
 
 int eeAddressStart = 0;
 
@@ -87,10 +85,12 @@ void setup() {
   pinMode(RotEncSwPin, INPUT_PULLUP);
   
   // Set up memory buttons
-  pinMode(M1Sw, INPUT_PULLUP);
-  pinMode(M2Sw, INPUT_PULLUP);
-  
-  
+  for (int buttons=0; buttons < NUMBER_MEM_BUTTONS; buttons++) {
+    mem_armed[buttons] = false;
+    last_mem[buttons] = 0;
+    pinMode(MEM_BUTTON_START_PIN + buttons,INPUT_PULLUP);  
+  }
+    
  // start on M1 freq
   EEPROM.get(eeAddressStart,freq);
   if(freq < bandStart || freq > bandEnd) {
@@ -157,52 +157,34 @@ void loop() {
   }
   
   // handle memory buttons
-  if(!m1armed && !digitalRead(M1Sw) && millis() - lastM1 > 50) {
-    lastM1 = millis();
-    m1armed = true;
-  }
-  if(m1armed && digitalRead(M1Sw) && millis() - lastM1 > 50) {  
-    //pushed, but for how long?
-    lcd.setCursor(0,1);
-    if(millis() - lastM1 > 500) {
-    // long push = commit to memory
-    EEPROM.put(eeAddressStart,freq);
-    lcd.print("m1 stored");
-    } else {
-    // short push = qsy to memory frequency
-    EEPROM.get(eeAddressStart,freq);
-    lcd.print("recall m1");
-    send_frequency(freq);     
-    display_frequency(freq);
+  for (int buttons = 0; buttons < NUMBER_MEM_BUTTONS; buttons++) {
+    if(!mem_armed[buttons] && !digitalRead(MEM_BUTTON_START_PIN+buttons) && millis() - last_mem[buttons] > 50) {
+      last_mem[buttons] = millis();
+      mem_armed[buttons] = true;
     }
-    m1armed = false;
-    lastM1 = millis();
-  }
-
-//yes, duplicative code, could make an array of it...
-//maybe optimize later
-
-  if(!m2armed && !digitalRead(M2Sw) && millis() - lastM2 > 50) {
-    lastM2 = millis();
-    m2armed = true;
-  }
-  if(m2armed && digitalRead(M2Sw) && millis() - lastM2 > 50) {
-    //pushed, but for how long?
-    lcd.setCursor(0,1); 
-    if(millis() - lastM2 > 500) {
-    // long push = commit to memory
-    EEPROM.put(eeAddressStart+sizeof(double),freq);
-    lcd.print("m2 stored"); 
-    } else {
-    // short push = qsy to memory frequency
-    EEPROM.get(eeAddressStart+sizeof(double),freq);
-    lcd.print("recall m2");
-    send_frequency(freq);     
-    display_frequency(freq);
+    if(mem_armed[buttons] && digitalRead(MEM_BUTTON_START_PIN+buttons) && millis() - last_mem[buttons] > 50) {  
+      //pushed, but for how long?
+      lcd.setCursor(0,1);
+      if(millis() - last_mem[buttons] > 500) {
+      // long push = commit to memory
+      EEPROM.put(eeAddressStart+buttons*sizeof(double),freq);
+      lcd.print("m");
+      lcd.print(buttons);
+      lcd.print(" stored");
+      } else {
+      // short push = qsy to memory frequency
+      EEPROM.get(eeAddressStart+buttons*sizeof(double),freq);
+      lcd.print("recall m");
+      lcd.print(buttons);
+      send_frequency(freq);     
+      display_frequency(freq);
+      }
+      mem_armed[buttons] = false;
+      last_mem[buttons] = millis();
     }
-    m2armed = false;
-    lastM2 = millis();
   }
+  
+  
 }
 
 // subroutine to display the frequency...
