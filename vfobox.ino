@@ -28,6 +28,7 @@ https://www.circuitsathome.com/mcu/rotary-encoder-interrupt-service-routine-for-
 // include the library code:
 #include "Wire.h"
 #include "Adafruit_LiquidCrystal.h"
+#include <EEPROM.h>
 
 // set rotary encoder pins
 #define ENC_RD	PIND	//encoder port read
@@ -61,6 +62,8 @@ boolean m1armed = false;
 boolean m2armed = false;
 long lastM1 = 0;
 long lastM2 = 0;
+
+int eeAddressStart = 0;
 
 // Connect via i2c, default address #1 (nothing jumpered)
 Adafruit_LiquidCrystal lcd(0);
@@ -154,10 +157,14 @@ void loop() {
     lcd.setCursor(0,1);
     if(millis() - lastM1 > 500) {
     // long push = commit to memory
+    EEPROM.put(eeAddressStart,freq);
     lcd.print("m1 stored");
     } else {
     // short push = qsy to memory frequency
+    EEPROM.get(eeAddressStart,freq);
     lcd.print("recall m1");
+    send_frequency(freq);     
+    display_frequency(freq);
     }
     m1armed = false;
     lastM1 = millis();
@@ -175,10 +182,14 @@ void loop() {
     lcd.setCursor(0,1); 
     if(millis() - lastM2 > 500) {
     // long push = commit to memory
+    EEPROM.put(eeAddressStart+sizeof(double),freq);
     lcd.print("m2 stored"); 
     } else {
     // short push = qsy to memory frequency
-    lcd.print("recall m2"); 
+    EEPROM.get(eeAddressStart+sizeof(double),freq);
+    lcd.print("recall m2");
+    send_frequency(freq);     
+    display_frequency(freq);
     }
     m2armed = false;
     lastM2 = millis();
