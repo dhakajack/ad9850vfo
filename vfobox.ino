@@ -66,6 +66,74 @@ int eeAddressStart = 0;
 // Connect via i2c, default address #1 (nothing jumpered)
 Adafruit_LiquidCrystal lcd(0);
 
+// subroutine to display the frequency...
+void display_frequency(double frequency) {  
+  int currentCursor;
+  byte currentDigit;
+  
+  lcd.noBlink(); // suppress blinking after printing Mhz
+  currentCursor = 0;
+  for (long freqDiv = 10000000; freqDiv > 1; freqDiv /=10) {
+    currentDigit = ((long(freq)/freqDiv)%10);
+    if (currentCursor == 2) {
+      lcd.setCursor(currentCursor,0);
+      lcd.print(".");
+      currentCursor++; 
+    } else if (currentCursor == 6) {
+      lcd.setCursor(currentCursor,0);
+      lcd.print(",");
+      currentCursor++;
+    } 
+    lcd.setCursor(currentCursor,0);
+    if (currentCursor == 0 && currentDigit == 0) {
+      lcd.print(" ");
+    } else {
+      lcd.print(currentDigit);
+    }
+    currentCursor++;
+  } 
+  lcd.print("0 MHz");
+}  
+
+// Subroutine to generate a positive pulse on 'pin'...
+void pulseHigh(int pin) {
+  digitalWrite(pin, HIGH); 
+  digitalWrite(pin, LOW); 
+}
+
+// calculate and send frequency code to DDS Module...
+void send_frequency(double frequency) {
+  int32_t freq = (frequency) * 4294967295/124997797;
+  for (int b=0; b<4; b++, freq>>=8) {
+    shiftOut(DATAPIN, W_CLK, LSBFIRST, freq & 0xFF);
+  } 
+  shiftOut(DATAPIN, W_CLK, LSBFIRST, 0x00);  
+  pulseHigh(FQ_UD); 
+}
+
+void evaluateRotary() {
+/* encoder routine. Expects encoder with four state changes between detents */
+/* and both pins open on detent */
+
+  static uint8_t old_AB = 3;  //lookup table index
+  static int8_t encval = 0;   //encoder value  
+  static const int8_t enc_states [] PROGMEM = 
+  {0,-1,1,0,1,0,0,-1,-1,0,0,1,0,1,-1,0};  //encoder lookup table
+  /**/
+  old_AB <<=2;  //remember previous state
+  old_AB |= (( ENC_RD >>2 ) & 0x03 );
+  encval += pgm_read_byte(&(enc_states[( old_AB & 0x0f )]));
+  
+  if( encval > 3 ) {  //four steps forward
+    counter = 1;
+    encval = 0;
+  }
+  else if( encval < -3 ) {  //four steps backwards
+   counter = 2;
+   encval = 0;
+  } 
+}
+
 void setup() {
   lcd.begin(16,2);
   lcd.setCursor(0,1); // This places a display on the LCD at turn on at the 2nd line
@@ -183,74 +251,4 @@ void loop() {
       last_mem[buttons] = millis();
     }
   }
-  
-  
-}
-
-// subroutine to display the frequency...
-void display_frequency(double frequency) {  
-  int currentCursor;
-  byte currentDigit;
-  
-  lcd.noBlink(); // suppress blinking after printing Mhz
-  currentCursor = 0;
-  for (long freqDiv = 10000000; freqDiv > 1; freqDiv /=10) {
-    currentDigit = ((long(freq)/freqDiv)%10);
-    if (currentCursor == 2) {
-      lcd.setCursor(currentCursor,0);
-      lcd.print(".");
-      currentCursor++; 
-    } else if (currentCursor == 6) {
-      lcd.setCursor(currentCursor,0);
-      lcd.print(",");
-      currentCursor++;
-    } 
-    lcd.setCursor(currentCursor,0);
-    if (currentCursor == 0 && currentDigit == 0) {
-      lcd.print(" ");
-    } else {
-      lcd.print(currentDigit);
-    }
-    currentCursor++;
-  } 
-  lcd.print("0 MHz");
-}  
-
-// Subroutine to generate a positive pulse on 'pin'...
-void pulseHigh(int pin) {
-  digitalWrite(pin, HIGH); 
-  digitalWrite(pin, LOW); 
-}
-
-// calculate and send frequency code to DDS Module...
-void send_frequency(double frequency) {
-  int32_t freq = (frequency) * 4294967295/124997797;
-  for (int b=0; b<4; b++, freq>>=8) {
-    shiftOut(DATAPIN, W_CLK, LSBFIRST, freq & 0xFF);
-  } 
-  shiftOut(DATAPIN, W_CLK, LSBFIRST, 0x00);  
-  pulseHigh(FQ_UD); 
-}
-
-void evaluateRotary() {
-/* encoder routine. Expects encoder with four state changes between detents */
-/* and both pins open on detent */
-
-  static uint8_t old_AB = 3;  //lookup table index
-  static int8_t encval = 0;   //encoder value  
-  static const int8_t enc_states [] PROGMEM = 
-  {0,-1,1,0,1,0,0,-1,-1,0,0,1,0,1,-1,0};  //encoder lookup table
-  /**/
-  old_AB <<=2;  //remember previous state
-  old_AB |= (( ENC_RD >>2 ) & 0x03 );
-  encval += pgm_read_byte(&(enc_states[( old_AB & 0x0f )]));
-  
-  if( encval > 3 ) {  //four steps forward
-    counter = 1;
-    encval = 0;
-  }
-  else if( encval < -3 ) {  //four steps backwards
-   counter = 2;
-   encval = 0;
-  } 
 }
