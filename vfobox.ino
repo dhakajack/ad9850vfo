@@ -62,6 +62,7 @@ long lastBlink = 0;
 boolean blinkState = false;
 
 long lastStatus = 0;
+boolean statusDisplayed = false;
 
 boolean mem_armed[NUMBER_MEM_BUTTONS];
 long last_mem[NUMBER_MEM_BUTTONS];
@@ -76,8 +77,8 @@ Adafruit_LiquidCrystal lcd(0);
 // subroutine to blank a display line
 void clear_line(byte lineNumber) {
   lcd.noBlink();
+  lcd.setCursor(0,lineNumber);
   for (int pos=0; pos < 20; pos++){
-    lcd.setCursor(pos,lineNumber);
     lcd.print(" ");
   }
 }
@@ -87,6 +88,8 @@ void update_status() {
   clear_line(1);
   lcd.setCursor(0,1);
   lcd.print(statusLine);
+  statusDisplayed = true;
+  lastStatus = millis();
 }
 
 // subroutine to display the frequency...
@@ -256,19 +259,28 @@ void loop() {
       // long push = commit to memory
       EEPROM.put(eeAddressStart+buttons*sizeof(double),freq);
       strcpy(statusLine,"m");
-      strcat(statusLine,"0" + buttons);
+      statusLine[1] = '0' + buttons; 
+      statusLine[2] = 0; // so that next bit gets add on here
       strcat(statusLine," stored");
       update_status();
       } else {
       // short push = qsy to memory frequency
       EEPROM.get(eeAddressStart+buttons*sizeof(double),freq);
-      lcd.print("recall m");
-      lcd.print(buttons+1);
+      strcpy(statusLine,"recall m"); 
+      statusLine[8] = '0' + buttons; 
+      statusLine[9] = 0; 
+      update_status();
       send_frequency(freq);     
       display_frequency(freq);
       }
       mem_armed[buttons] = false;
       last_mem[buttons] = millis();
     }
+  }
+  
+  //wipe stale status
+  if (statusDisplayed && millis() - lastStatus > 2000) {
+    clear_line(1);
+    statusDisplayed = false;
   }
 }
