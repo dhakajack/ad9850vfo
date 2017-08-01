@@ -1,7 +1,10 @@
 /*
 
-DDS code based on Pete Juliano's super simple DDS code
+DDS code based on Pete Juliano's (N6QW) super simple DDS code
 http://www.jessystems.com/Images/Arduino/AD9850_Signal_Generator.txt
+
+with additional DDS inspiration from Rich, AD7C's project:
+http://www.ad7c.com/projects/ad9850-dds-vfo/
 
 Rotary Encoder code based on my ATmega328 port
 http://blog.templaro.com/reading-a-rotary-encoder-demo-code-for-atmega328/
@@ -58,13 +61,33 @@ long lastClick = 0;
 long lastBlink = 0;
 boolean blinkState = false;
 
+long lastStatus = 0;
+
 boolean mem_armed[NUMBER_MEM_BUTTONS];
 long last_mem[NUMBER_MEM_BUTTONS];
 
 int eeAddressStart = 0;
 
+char statusLine[21];
+
 // Connect via i2c, default address #1 (nothing jumpered)
 Adafruit_LiquidCrystal lcd(0);
+
+// subroutine to blank a display line
+void clear_line(byte lineNumber) {
+  lcd.noBlink();
+  for (int pos=0; pos < 20; pos++){
+    lcd.setCursor(pos,lineNumber);
+    lcd.print(" ");
+  }
+}
+
+// subroutine to update status line
+void update_status() {
+  clear_line(1);
+  lcd.setCursor(0,1);
+  lcd.print(statusLine);
+}
 
 // subroutine to display the frequency...
 void display_frequency(double frequency) {  
@@ -136,8 +159,8 @@ void evaluateRotary() {
 
 void setup() {
   lcd.begin(16,2);
-  lcd.setCursor(0,1); // This places a display on the LCD at turn on at the 2nd line
-  lcd.print(" 5R8SV Sig Gen");
+  strcpy(statusLine,"5R8SV SIG GEN");
+  update_status();
   
   // Set up DDS
   pinMode(FQ_UD, OUTPUT);
@@ -173,10 +196,6 @@ void setup() {
   // start the oscillator...
   send_frequency(freq);     
   display_frequency(freq);
-  
-  delay(500);
-  lcd.setCursor(0,1);
-  lcd.print("              ");
 }
 
 void loop() {
@@ -236,9 +255,10 @@ void loop() {
       if(millis() - last_mem[buttons] > 500) {
       // long push = commit to memory
       EEPROM.put(eeAddressStart+buttons*sizeof(double),freq);
-      lcd.print("m");
-      lcd.print(buttons+1); // first button is referred to as "m1"
-      lcd.print(" stored");
+      strcpy(statusLine,"m");
+      strcat(statusLine,"0" + buttons);
+      strcat(statusLine," stored");
+      update_status();
       } else {
       // short push = qsy to memory frequency
       EEPROM.get(eeAddressStart+buttons*sizeof(double),freq);
