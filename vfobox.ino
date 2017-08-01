@@ -35,18 +35,22 @@ https://www.circuitsathome.com/mcu/rotary-encoder-interrupt-service-routine-for-
 
 // set rotary encoder pins
 #define ENC_RD	PIND	//encoder port read
-#define RotEncSwPin 1 // digital pin 4
 #define A_PIN 2  // INT0 vector; digital pin 2
 #define B_PIN 3  // INT1 vector; digital pin 3
+#define RotEncSwPin 17 // digital pin 17 (a3)
 
 // set up AD9850 pins
-#define W_CLK 4
-#define FQ_UD 5
-#define DATAPIN 6
-#define RESET 7
+#define W_CLK 4 // digital pin 4
+#define FQ_UD 5  // digital pin 5
+#define DATAPIN 8  // digital pin 8
+#define RESET 9  // digital pin 9
+
+// set up comparator inputs
+//
+//
 
 // set up memory push buttons
-#define MEM_BUTTON_START_PIN  8  // digital pin where mem buttons start
+#define MEM_BUTTON_START_PIN  10  // digital pin where mem buttons start
 #define NUMBER_MEM_BUTTONS    2  // how many mem buttons
 
 const double bandStart = 100000;  // start of Gnerator at 100 KHZ
