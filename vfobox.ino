@@ -40,14 +40,15 @@ https://www.circuitsathome.com/mcu/rotary-encoder-interrupt-service-routine-for-
 #define RotEncSwPin 17 // digital pin 17 (a3)
 
 // set up AD9850 pins
-#define W_CLK 4 // digital pin 4
-#define FQ_UD 5  // digital pin 5
-#define DATAPIN 8  // digital pin 8
-#define RESET 9  // digital pin 9
+#define W_CLK 4        // digital 4
+#define FQ_UD 5        // digital 5
+#define DATAPIN 8      // digital 8
+#define RESET 9        // digital 9
 
-// set up comparator inputs
-//
-//
+// set up output power monitoring
+#define WARN_LED 16   // digital 16
+#define RF_V 0        // analog  0
+#define THRESHOLD_VOLTAGE 880  //range 0-1100 mV
 
 // set up memory push buttons
 #define MEM_BUTTON_START_PIN  10  // digital pin where mem buttons start
@@ -61,24 +62,26 @@ double freq = 0 ;  // this is a variable (changes) - set it to the beginning of 
 double freqDelta = 10000; // how much to change the frequency by, clicking the rotary encoder will change this.
 
 byte counter = 0;
+
 long lastClick = 0;
 long lastBlink = 0;
-boolean blinkState = false;
-
 long lastStatus = 0;
-boolean statusDisplayed = false;
-
-boolean mem_armed[NUMBER_MEM_BUTTONS];
+long lastTrigger = 0;
 long last_mem[NUMBER_MEM_BUTTONS];
 
+boolean blinkState = false;
+boolean statusDisplayed = false;
+boolean mem_armed[NUMBER_MEM_BUTTONS];
+
 int eeAddressStart = 0;
+int threshold = 0;
 
 char statusLine[21];
 
 // Connect via i2c, default address #1 (nothing jumpered)
 Adafruit_LiquidCrystal lcd(0);
 
-// subroutine to blank a display line
+// Blank a display line
 void clear_line(byte lineNumber) {
   lcd.noBlink();
   lcd.setCursor(0,lineNumber);
@@ -87,7 +90,7 @@ void clear_line(byte lineNumber) {
   }
 }
 
-// subroutine to update status line
+// Update status line
 void update_status() {
   clear_line(1);
   lcd.setCursor(0,1);
@@ -96,7 +99,7 @@ void update_status() {
   lastStatus = millis();
 }
 
-// subroutine to display the frequency...
+// Display the frequency...
 void display_frequency(double frequency) {  
   int currentCursor;
   byte currentDigit;
@@ -125,13 +128,13 @@ void display_frequency(double frequency) {
   lcd.print("0 MHz");
 }  
 
-// Subroutine to generate a positive pulse on 'pin'...
+// Generate a positive pulse on 'pin'...
 void pulseHigh(int pin) {
   digitalWrite(pin, HIGH); 
   digitalWrite(pin, LOW); 
 }
 
-// calculate and send frequency code to DDS Module...
+// Calculate and send frequency code to DDS Module...
 void send_frequency(double frequency) {
   int32_t freq = (frequency) * 4294967295/124997797;
   for (int b=0; b<4; b++, freq>>=8) {
@@ -141,6 +144,7 @@ void send_frequency(double frequency) {
   pulseHigh(FQ_UD); 
 }
 
+// evaluate encoder spins
 void evaluateRotary() {
 /* encoder routine. Expects encoder with four state changes between detents */
 /* and both pins open on detent */
@@ -175,12 +179,19 @@ void setup() {
   pinMode(DATAPIN, OUTPUT);
   pinMode(RESET, OUTPUT);
   
+  
   // Set up Rotary Encoder
   pinMode(A_PIN, INPUT_PULLUP);
   pinMode(B_PIN, INPUT_PULLUP);
   attachInterrupt(0, evaluateRotary, CHANGE);
   attachInterrupt(1, evaluateRotary, CHANGE);
   pinMode(RotEncSwPin, INPUT_PULLUP);
+  
+  // Set up Output Monitoring
+  pinMode(WARN_LED, OUTPUT);
+  digitalWrite(WARN_LED, LOW);
+  analogReference(INTERNAL);
+  threshold = 1023L * THRESHOLD_VOLTAGE / 1100;
   
   // Set up memory buttons
   for (int buttons=0; buttons < NUMBER_MEM_BUTTONS; buttons++) {
@@ -264,7 +275,7 @@ void loop() {
       EEPROM.put(eeAddressStart+buttons*sizeof(double),freq);
       strcpy(statusLine,"m");
       statusLine[1] = '0' + buttons; 
-      statusLine[2] = 0; // so that next bit gets add on here
+      statusLine[2] = 0; // so that next bit gets added on here
       strcat(statusLine," stored");
       update_status();
       } else {
@@ -280,6 +291,15 @@ void loop() {
       mem_armed[buttons] = false;
       last_mem[buttons] = millis();
     }
+  }
+  
+  if(millis() - lastTrigger > 100) {
+    if(analogRead(RF_V) > threshold) {
+      digitalWrite(WARN_LED, HIGH);
+    } else {
+      digitalWrite(WARN_LED, LOW);
+    }
+    lastTrigger = millis();
   }
   
   //wipe stale status
