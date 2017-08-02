@@ -98,6 +98,14 @@ void update_status() {
   lastStatus = millis();
 }
 
+//Wipe stale status
+void wipeStaleStatus() {
+  if (statusDisplayed && millis() - lastStatus > 2000) {
+    clear_line(1);
+    statusDisplayed = false;
+  }
+}
+
 // Display the frequency...
 void display_frequency(double frequency) {  
   int currentCursor;
@@ -306,10 +314,5 @@ void loop() {
   }
   
   checkOutputLevel();
-
-  //wipe stale status
-  if (statusDisplayed && millis() - lastStatus > 2000) {
-    clear_line(1);
-    statusDisplayed = false;
-  }
+  wipeStaleStatus();
 }
