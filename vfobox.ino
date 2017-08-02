@@ -67,7 +67,6 @@ long lastClick = 0;
 long lastBlink = 0;
 long lastStatus = 0;
 
-boolean blinkState = false;
 boolean statusDisplayed = false;
 
 int eeAddressStart = 0;
@@ -306,12 +305,16 @@ void loop() {
       }
     }
     lcd.setCursor(freqCursorPosition,0);
-    if(blinkState) {
+    lcd.blink();
+    
+    /*
       lcd.noBlink();
     } else {
       lcd.blink();
     }
-    blinkState = !blinkState;
+    
+    
+    */
     lastBlink = millis();
   }
   
