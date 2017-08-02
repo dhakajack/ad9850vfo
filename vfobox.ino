@@ -66,7 +66,6 @@ byte spinDirection = 0; // rotary encoder spun ccw (-1), cw (1), or no change (0
 long lastClick = 0;
 long lastBlink = 0;
 long lastStatus = 0;
-long lastTrigger = 0;
 long last_mem[NUMBER_MEM_BUTTONS];
 
 boolean blinkState = false;
@@ -166,6 +165,19 @@ void evaluateRotary() {
    spinDirection = 2;
    encval = 0;
   } 
+}
+
+void checkOutputLevel() {
+  static long lastTrigger = 0;
+  
+  if(millis() - lastTrigger > 100) {
+    if(analogRead(RF_V) > threshold) {
+      digitalWrite(WARN_LED, HIGH);
+    } else {
+      digitalWrite(WARN_LED, LOW);
+    }
+    lastTrigger = millis();
+  }
 }
 
 void setup() {
@@ -293,15 +305,8 @@ void loop() {
     }
   }
   
-  if(millis() - lastTrigger > 100) {
-    if(analogRead(RF_V) > threshold) {
-      digitalWrite(WARN_LED, HIGH);
-    } else {
-      digitalWrite(WARN_LED, LOW);
-    }
-    lastTrigger = millis();
-  }
-  
+  checkOutputLevel();
+
   //wipe stale status
   if (statusDisplayed && millis() - lastStatus > 2000) {
     clear_line(1);
