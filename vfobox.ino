@@ -66,11 +66,9 @@ byte spinDirection = 0; // rotary encoder spun ccw (-1), cw (1), or no change (0
 long lastClick = 0;
 long lastBlink = 0;
 long lastStatus = 0;
-long last_mem[NUMBER_MEM_BUTTONS];
 
 boolean blinkState = false;
 boolean statusDisplayed = false;
-boolean mem_armed[NUMBER_MEM_BUTTONS];
 
 int eeAddressStart = 0;
 int threshold = 0;
@@ -188,6 +186,44 @@ void checkOutputLevel() {
   }
 }
 
+//Handle Memory Button Pushes
+void handleMemoryButtons() {
+
+  static boolean mem_armed[NUMBER_MEM_BUTTONS];
+  static long last_mem[NUMBER_MEM_BUTTONS];
+  
+  for (int buttons = 0; buttons < NUMBER_MEM_BUTTONS; buttons++) {   
+    if(!mem_armed[buttons] && !digitalRead(MEM_BUTTON_START_PIN+buttons) && millis() - last_mem[buttons] > 50) {
+      last_mem[buttons] = millis();
+      mem_armed[buttons] = true;
+    }
+    if(mem_armed[buttons] && digitalRead(MEM_BUTTON_START_PIN+buttons) && millis() - last_mem[buttons] > 50) {  
+      //pushed, but for how long?
+      lcd.setCursor(0,1);
+      if(millis() - last_mem[buttons] > 500) {
+      // long push = commit to memory
+      EEPROM.put(eeAddressStart+buttons*sizeof(double),freq);
+      strcpy(statusLine,"m");
+      statusLine[1] = '0' + buttons; 
+      statusLine[2] = 0; // so that next bit gets added on here
+      strcat(statusLine," stored");
+      update_status();
+      } else {
+      // short push = qsy to memory frequency
+      EEPROM.get(eeAddressStart+buttons*sizeof(double),freq);
+      strcpy(statusLine,"recall m"); 
+      statusLine[8] = '0' + buttons; 
+      statusLine[9] = 0; 
+      update_status();
+      send_frequency(freq);     
+      display_frequency(freq);
+      }
+      mem_armed[buttons] = false;
+      last_mem[buttons] = millis();
+    }
+  }
+}
+
 void setup() {
   lcd.begin(16,2);
   strcpy(statusLine,"5R8SV SIG GEN");
@@ -215,8 +251,6 @@ void setup() {
   
   // Set up memory buttons
   for (int buttons=0; buttons < NUMBER_MEM_BUTTONS; buttons++) {
-    mem_armed[buttons] = false;
-    last_mem[buttons] = 0;
     pinMode(MEM_BUTTON_START_PIN + buttons,INPUT_PULLUP);  
   }
     
@@ -281,38 +315,8 @@ void loop() {
     lastBlink = millis();
   }
   
-  // handle memory buttons
-  for (int buttons = 0; buttons < NUMBER_MEM_BUTTONS; buttons++) {
-    if(!mem_armed[buttons] && !digitalRead(MEM_BUTTON_START_PIN+buttons) && millis() - last_mem[buttons] > 50) {
-      last_mem[buttons] = millis();
-      mem_armed[buttons] = true;
-    }
-    if(mem_armed[buttons] && digitalRead(MEM_BUTTON_START_PIN+buttons) && millis() - last_mem[buttons] > 50) {  
-      //pushed, but for how long?
-      lcd.setCursor(0,1);
-      if(millis() - last_mem[buttons] > 500) {
-      // long push = commit to memory
-      EEPROM.put(eeAddressStart+buttons*sizeof(double),freq);
-      strcpy(statusLine,"m");
-      statusLine[1] = '0' + buttons; 
-      statusLine[2] = 0; // so that next bit gets added on here
-      strcat(statusLine," stored");
-      update_status();
-      } else {
-      // short push = qsy to memory frequency
-      EEPROM.get(eeAddressStart+buttons*sizeof(double),freq);
-      strcpy(statusLine,"recall m"); 
-      statusLine[8] = '0' + buttons; 
-      statusLine[9] = 0; 
-      update_status();
-      send_frequency(freq);     
-      display_frequency(freq);
-      }
-      mem_armed[buttons] = false;
-      last_mem[buttons] = millis();
-    }
-  }
-  
+
+  handleMemoryButtons();
   checkOutputLevel();
   wipeStaleStatus();
 }
