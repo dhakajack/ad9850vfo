@@ -64,7 +64,6 @@ double freqDelta = 10000; // how much to change the frequency by, clicking the r
 byte spinDirection = 0; // rotary encoder spun ccw (-1), cw (1), or no change (0)
 
 long lastClick = 0;
-long lastBlink = 0;
 long lastStatus = 0;
 
 boolean statusDisplayed = false;
@@ -100,6 +99,25 @@ void wipeStaleStatus() {
   if (statusDisplayed && millis() - lastStatus > 2000) {
     clear_line(1);
     statusDisplayed = false;
+  }
+}
+
+//blink the cursor to show selected frequency resolution
+void blinkCursor() {
+  static long lastBlinkCheck = 0;
+  static byte freqCursorPosition = 4;
+  
+    if (millis() - lastBlinkCheck > 300) {
+    freqCursorPosition = 8;
+    for (long tempDelta = 10; tempDelta/freqDelta != 1; tempDelta *= 10) {
+      freqCursorPosition--;
+      if (freqCursorPosition == 2 || freqCursorPosition == 6) {  //hop the punctuation
+        freqCursorPosition--;
+      }
+    }
+    lcd.setCursor(freqCursorPosition,0);
+    lcd.blink();
+    lastBlinkCheck = millis();
   }
 }
 
@@ -270,7 +288,6 @@ void setup() {
 }
 
 void loop() {
-  int freqCursorPosition = 4;
   
   // change freq dependent on rotary encoder spin direction
   if(spinDirection != 0) {
@@ -295,30 +312,7 @@ void loop() {
     lastClick = millis();
   }
   
-  //blink the cursor to show selected frequency resolution
-  if (millis() - lastBlink > 300) {
-    freqCursorPosition = 8;
-    for (long tempDelta = 10; tempDelta/freqDelta != 1; tempDelta *= 10) {
-      freqCursorPosition--;
-      if (freqCursorPosition == 2 || freqCursorPosition == 6) {  //hop the punctuation
-        freqCursorPosition--;
-      }
-    }
-    lcd.setCursor(freqCursorPosition,0);
-    lcd.blink();
-    
-    /*
-      lcd.noBlink();
-    } else {
-      lcd.blink();
-    }
-    
-    
-    */
-    lastBlink = millis();
-  }
-  
-
+  blinkCursor();
   handleMemoryButtons();
   checkOutputLevel();
   wipeStaleStatus();
