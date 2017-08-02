@@ -54,24 +54,22 @@ https://www.circuitsathome.com/mcu/rotary-encoder-interrupt-service-routine-for-
 #define MEM_BUTTON_START_PIN  10  // digital pin where mem buttons start
 #define NUMBER_MEM_BUTTONS    2  // how many mem buttons
 
+#define EE_ADDRESS_START      0
+
 const double bandStart = 100000;  // start of Gnerator at 100 KHZ
 const double bandEnd = 40000000; // End of Generator at 40 MHz --signal will be a bit flaky!
 const double bandInit = 7150000; // where to initially set the frequency for tetsting Part II
 
-double freq = 0 ;  // this is a variable (changes) - set it to the beginning of the band
+double freq = 0 ;  // tuning frequency in Hz
 double freqDelta = 10000; // how much to change the frequency by, clicking the rotary encoder will change this.
 
 byte spinDirection = 0; // rotary encoder spun ccw (-1), cw (1), or no change (0)
 
-long lastClick = 0;
 long lastStatus = 0;
-
 boolean statusDisplayed = false;
-
-int eeAddressStart = 0;
-int threshold = 0;
-
 char statusLine[21];
+
+int threshold = 0; 
 
 // Connect via i2c, default address #1 (nothing jumpered)
 Adafruit_LiquidCrystal lcd(0);
@@ -190,6 +188,40 @@ void evaluateRotary() {
   } 
 }
 
+//Is there a pending encoder spin to react to? If so, which direction?
+void wasRotaryEncoderSpun() {
+  // change freq dependent on rotary encoder spin direction
+  if(spinDirection != 0) {
+    if (spinDirection == 1) {
+      freq=constrain(freq-freqDelta,bandStart,bandEnd);
+    } else {
+      freq=constrain(freq+freqDelta,bandStart,bandEnd);
+    }
+    spinDirection = 0;
+    display_frequency(freq); // push the frequency to LCD display
+    send_frequency(freq);  // set the DDS to the new frequency  
+  }
+}
+
+// Check for the click of the rotary encoder 
+void wasRotaryEncoderClicked() {
+  static long lastClick = 0;
+  
+  if (!digitalRead(RotEncSwPin) && millis() - lastClick > 200) { // push button debounce
+    // if user clicks rotary encoder, change the size of the increment
+    if (freqDelta == 10) {
+      freqDelta = 1000000;
+    } else {
+      freqDelta /= 10;
+    }
+    lastClick = millis();
+  }
+}
+
+// Light warning LED for output above a specified level
+// set conservatively to warn before distortion from amp
+// kicks in. 
+
 void checkOutputLevel() {
   static long lastTrigger = 0;
   
@@ -219,7 +251,7 @@ void handleMemoryButtons() {
       lcd.setCursor(0,1);
       if(millis() - last_mem[buttons] > 500) {
       // long push = commit to memory
-      EEPROM.put(eeAddressStart+buttons*sizeof(double),freq);
+      EEPROM.put(EE_ADDRESS_START + buttons*sizeof(double),freq);
       strcpy(statusLine,"m");
       statusLine[1] = '0' + buttons; 
       statusLine[2] = 0; // so that next bit gets added on here
@@ -227,7 +259,7 @@ void handleMemoryButtons() {
       update_status();
       } else {
       // short push = qsy to memory frequency
-      EEPROM.get(eeAddressStart+buttons*sizeof(double),freq);
+      EEPROM.get(EE_ADDRESS_START + buttons*sizeof(double),freq);
       strcpy(statusLine,"recall m"); 
       statusLine[8] = '0' + buttons; 
       statusLine[9] = 0; 
@@ -272,10 +304,10 @@ void setup() {
   }
     
  // start on M1 freq
-  EEPROM.get(eeAddressStart,freq);
+  EEPROM.get(EE_ADDRESS_START,freq);
   if(freq < bandStart || freq > bandEnd) {
     freq = bandInit;
-    EEPROM.put(eeAddressStart,freq);
+    EEPROM.put(EE_ADDRESS_START,freq);
   }
   
  // start up the DDS... 
@@ -289,31 +321,11 @@ void setup() {
 
 void loop() {
   
-  // change freq dependent on rotary encoder spin direction
-  if(spinDirection != 0) {
-    if (spinDirection == 1) {
-      freq=constrain(freq-freqDelta,bandStart,bandEnd);
-    } else {
-      freq=constrain(freq+freqDelta,bandStart,bandEnd);
-    }
-    spinDirection = 0;
-    display_frequency(freq); // push the frequency to LCD display
-    send_frequency(freq);  // set the DDS to the new frequency  
-  }
-  
-  // check for the click of the rotary encoder 
-  if (!digitalRead(RotEncSwPin) && millis() - lastClick > 200) { // push button debounce
-    // if user clicks rotary encoder, change the size of the increment
-    if (freqDelta == 10) {
-      freqDelta = 1000000;
-    } else {
-      freqDelta /= 10;
-    }
-    lastClick = millis();
-  }
-  
+  wasRotaryEncoderSpun();
+  wasRotaryEncoderClicked();
   blinkCursor();
   handleMemoryButtons();
   checkOutputLevel();
   wipeStaleStatus();
+  
 }
