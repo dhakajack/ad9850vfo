@@ -12,19 +12,43 @@ of Oleg Mazurov's code written for ATmega644p
 https://www.circuitsathome.com/mcu/rotary-encoder-interrupt-service-routine-for-avr-micros
 
  
-  The circuit:
+ The circuit:
+ 
+ Power
+ * nominal 12V supply to amplifier 
  * 5V to Arduino 5V pin
  * GND to Arduino GND pin
  
+ Reserve For Serial Debugging
+ * Leave digital #0 (RXD) and #1 (TXD) available for serial debugging
+  
+ Rotary Encoder
+ * Rotary Encoder right tab to digital #2
+ * Rotary Encoder left tab to digital #3
+ * Rotary Encoder middle tab to ground
+ * Rotary Switch to digital #17
+ 
+ AD9850
  * CLK to digital #4
  * FQ to digital #5
- * DAT to digital #6
- * RST to digital #7
+ * DAT to digital #8
+ * RST to digital #9
  
- * Rotary Encoder left tab to digital #3
- * Rotary Encoder right tab to digital #2
- * Rotary Encoder middle tab to ground
- * Rotary Switch to digital #1
+ Reserve For Comparator
+ * Leave digital #6 and #7 available for future use of analog comparator
+ 
+ Memory Buttons
+ * Up to four memory buttons can be added, starting at d10..d13
+ 
+ RF Output Warning
+ * Sense rectified RF output on digital #14 (ADC 0)
+ * Warning LED on digital #16
+ 
+ I2C bus
+ * Built-in SDA on digital #18
+ * Built-in SCL on digital #19
+ 
+ AREF is not connected; we use ATmega328 1.1V internal analog reference
  
 */
 
