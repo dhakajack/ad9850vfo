@@ -61,7 +61,7 @@ const double bandInit = 7150000; // where to initially set the frequency for tet
 double freq = 0 ;  // this is a variable (changes) - set it to the beginning of the band
 double freqDelta = 10000; // how much to change the frequency by, clicking the rotary encoder will change this.
 
-byte counter = 0;
+byte spinDirection = 0; // rotary encoder spun ccw (-1), cw (1), or no change (0)
 
 long lastClick = 0;
 long lastBlink = 0;
@@ -159,11 +159,11 @@ void evaluateRotary() {
   encval += pgm_read_byte(&(enc_states[( old_AB & 0x0f )]));
   
   if( encval > 3 ) {  //four steps forward
-    counter = 1;
+    spinDirection = 1;
     encval = 0;
   }
   else if( encval < -3 ) {  //four steps backwards
-   counter = 2;
+   spinDirection = 2;
    encval = 0;
   } 
 }
@@ -220,13 +220,13 @@ void loop() {
   int freqCursorPosition = 4;
   
   // change freq dependent on rotary encoder spin direction
-  if(counter != 0) {
-    if (counter == 1) {
+  if(spinDirection != 0) {
+    if (spinDirection == 1) {
       freq=constrain(freq-freqDelta,bandStart,bandEnd);
     } else {
       freq=constrain(freq+freqDelta,bandStart,bandEnd);
     }
-    counter = 0;
+    spinDirection = 0;
     display_frequency(freq); // push the frequency to LCD display
     send_frequency(freq);  // set the DDS to the new frequency  
   }
