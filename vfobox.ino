@@ -26,27 +26,25 @@ https://www.circuitsathome.com/mcu/rotary-encoder-interrupt-service-routine-for-
  * Rotary Encoder right tab to digital #2
  * Rotary Encoder left tab to digital #3
  * Rotary Encoder middle tab to ground
- * Rotary Switch to digital #17
+ * Rotary Switch to digital #4
  
  AD9850
- * CLK to digital #4
- * FQ to digital #5
- * DAT to digital #8
- * RST to digital #9
- 
- Reserve For Comparator
- * Leave digital #6 and #7 available for future use of analog comparator
+ * CLK to digital #5
+ * RST to digital #6
+ * DAT to digital #7
+ * FQ  to digital #8
  
  Memory Buttons
- * Up to four memory buttons can be added, starting at d10..d13
+ * Up to four memory buttons can be added, starting at d9 & d10
+   (d11 and d12 not connected in present design)
  
  RF Output Warning
  * Sense rectified RF output on digital #14 (ADC 0)
- * Warning LED on digital #16
+ * Warning LED on digital #13
  
  I2C bus
- * Built-in SDA on digital #18
- * Built-in SCL on digital #19
+ * Built-in SDA on digital #18 (a4)
+ * Built-in SCL on digital #19 (a5)
  
  AREF is not connected; we use ATmega328 1.1V internal analog reference
  
@@ -61,21 +59,21 @@ https://www.circuitsathome.com/mcu/rotary-encoder-interrupt-service-routine-for-
 #define ENC_RD	PIND	//encoder port read
 #define A_PIN 2  // INT0 vector; digital pin 2
 #define B_PIN 3  // INT1 vector; digital pin 3
-#define RotEncSwPin 17 // digital pin 17 (a3)
+#define RotEncSwPin 4 // digital pin 17 (a3)
 
 // set up AD9850 pins
-#define W_CLK 4        // digital 4
-#define FQ_UD 5        // digital 5
-#define DATAPIN 8      // digital 8
-#define RESET 9        // digital 9
+#define W_CLK 5        // digital 4
+#define RESET 6        // digital 9
+#define DATAPIN 7      // digital 8
+#define FQ_UD 8        // digital 5
 
 // set up output power monitoring
-#define WARN_LED 16   // digital 16
+#define WARN_LED 13   // digital 16
 #define RF_V 0        // analog  0
 #define THRESHOLD_VOLTAGE 880  //range 0-1100 mV
 
 // set up memory push buttons
-#define MEM_BUTTON_START_PIN  10  // digital pin where mem buttons start
+#define MEM_BUTTON_START_PIN  9  // digital pin where mem buttons start
 #define NUMBER_MEM_BUTTONS    2  // how many mem buttons
 
 #define EE_ADDRESS_START      0
