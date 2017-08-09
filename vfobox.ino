@@ -39,7 +39,7 @@ https://www.circuitsathome.com/mcu/rotary-encoder-interrupt-service-routine-for-
    (d11 and d12 not connected in present design)
  
  RF Output Warning
- * Sense rectified RF output on digital #14 (ADC 0)
+ * Sense rectified RF output on digital #14 (ADC 0) WARN
  * Warning LED on digital #13
  
  I2C bus
@@ -78,12 +78,12 @@ https://www.circuitsathome.com/mcu/rotary-encoder-interrupt-service-routine-for-
 
 #define EE_ADDRESS_START      0
 
-const double bandStart = 100000;  // start of Gnerator at 100 KHZ
-const double bandEnd = 40000000; // End of Generator at 40 MHz --signal will be a bit flaky!
-const double bandInit = 7150000; // where to initially set the frequency for tetsting Part II
+const long bandStart = 100000;  // start of Gnerator at 100 KHZ
+const long bandEnd = 40000000; // End of Generator at 40 MHz --signal will be a bit flaky!
+const long bandInit = 7150000; // where to initially set the frequency
 
-double freq = 0 ;  // tuning frequency in Hz
-double freqDelta = 10000; // how much to change the frequency by, clicking the rotary encoder will change this.
+long freq = 0 ;  // tuning frequency in Hz
+long freqDelta = 10000; // how much to change the frequency by, clicking the rotary encoder will change this.
 
 byte spinDirection = 0; // rotary encoder spun ccw (-1), cw (1), or no change (0)
 
@@ -142,14 +142,14 @@ void blinkCursor() {
 }
 
 // Display the frequency...
-void display_frequency(double frequency) {  
+void display_frequency(long frequency) {  
   int currentCursor;
   byte currentDigit;
   
   lcd.noBlink(); // suppress blinking after printing Mhz
   currentCursor = 0;
   for (long freqDiv = 10000000; freqDiv > 1; freqDiv /=10) {
-    currentDigit = ((long(freq)/freqDiv)%10);
+    currentDigit = (frequency/freqDiv) %10;
     if (currentCursor == 2) {
       lcd.setCursor(currentCursor,0);
       lcd.print(".");
@@ -177,10 +177,10 @@ void pulseHigh(int pin) {
 }
 
 // Calculate and send frequency code to DDS Module...
-void send_frequency(double frequency) {
-  int32_t freq = (frequency) * 4294967295/124997797;
-  for (int b=0; b<4; b++, freq>>=8) {
-    shiftOut(DATAPIN, W_CLK, LSBFIRST, freq & 0xFF);
+void send_frequency(long frequency) {
+  int32_t sendFreq = double (frequency) * 4294967295/124997797;
+  for (int b=0; b<4; b++, sendFreq>>=8) {
+    shiftOut(DATAPIN, W_CLK, LSBFIRST, sendFreq & 0xFF);
   } 
   shiftOut(DATAPIN, W_CLK, LSBFIRST, 0x00);  
   pulseHigh(FQ_UD); 
@@ -273,7 +273,7 @@ void handleMemoryButtons() {
       lcd.setCursor(0,1);
       if(millis() - last_mem[buttons] > 500) {
       // long push = commit to memory
-      EEPROM.put(EE_ADDRESS_START + buttons*sizeof(double),freq);
+      EEPROM.put(EE_ADDRESS_START + buttons*sizeof(long),freq);
       strcpy(statusLine,"m");
       statusLine[1] = '0' + buttons; 
       statusLine[2] = 0; // so that next bit gets added on here
@@ -281,7 +281,7 @@ void handleMemoryButtons() {
       update_status();
       } else {
       // short push = qsy to memory frequency
-      EEPROM.get(EE_ADDRESS_START + buttons*sizeof(double),freq);
+      EEPROM.get(EE_ADDRESS_START + buttons*sizeof(long),freq);
       strcpy(statusLine,"recall m"); 
       statusLine[8] = '0' + buttons; 
       statusLine[9] = 0; 
@@ -325,11 +325,13 @@ void setup() {
     pinMode(MEM_BUTTON_START_PIN + buttons,INPUT_PULLUP);  
   }
     
- // start on M1 freq
+ // if nothing (reasonable) in first memory, fill mem slots with default starting freq
   EEPROM.get(EE_ADDRESS_START,freq);
   if(freq < bandStart || freq > bandEnd) {
     freq = bandInit;
-    EEPROM.put(EE_ADDRESS_START,freq);
+    for (int buttons = 0; buttons < NUMBER_MEM_BUTTONS; buttons++) {
+      EEPROM.put(EE_ADDRESS_START + buttons*sizeof(long),freq);
+    }
   }
   
  // start up the DDS... 
